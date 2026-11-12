@@ -73,7 +73,7 @@ class OCSBCMC(nn.Module):
 
     # ------------------------------------------------------------ forward
 
-    def forward(self, ep, use_csr=True, top_m=None):
+    def forward(self, ep, use_csr=True, top_m=None, bg_baseline=False):
         tau = self.tau
         dev = ep['s_h'].device
 
@@ -99,6 +99,15 @@ class OCSBCMC(nn.Module):
         # Fix 1：多子原型 Top-M
         s0 = self.topm_score(z_R, a_fg)
         s0_bg = self.topm_score(z_R, a_bg)
+        # S4：基准也减去背景负对照（前景-背景裕度）
+        if bg_baseline:
+            neg_all = a_bg
+            if ep.get('base_protos') is not None and ep['base_protos'].numel():
+                bp = F.normalize(ep['base_protos'].to(z_R.dtype), dim=-1)
+                neg_all = torch.cat([neg_all, bp], 0)
+            s_neg = self.topm_score(z_R, neg_all)
+            s0 = s0 - s_neg
+            s0_bg = s0_bg - s_neg
 
         out = {'q_reg': q_reg, 'z_R': z_R, 's0': s0, 's0_bg': s0_bg,
                'B_idx': B_idx, 'C_idx': C_idx, 'n_reg': n_reg,
