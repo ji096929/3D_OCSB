@@ -110,7 +110,10 @@ def load_eps(n, table):
         fg_s = fg_s / cnt_s
         D_S = z_sR[fg_s <= 0.0]
         P_base = F.normalize(table.to(z_s.dtype), dim=-1)
-        N_neg = torch.cat([x for x in (D_S, P_base) if x.shape[0] > 0], 0)
+        # D_Q：查询集内 m(R) < -2.0 的纯背景超点
+        D_Q = z_sp[torch.from_numpy(m_sp < -2.0).to(z_sp.device)]
+        N_neg = torch.cat([x for x in (D_Q, D_S, P_base)
+                           if x.shape[0] > 0], 0)
         eps.append({'m': m_sp, 'inv': inv, 'n_reg': n_reg, 'y': y,
                     'coord': coord, 'seg': seg, 'z_sp': z_sp,
                     'rgb_sp': rgb_sp, 'coord_sp': coord_sp,
