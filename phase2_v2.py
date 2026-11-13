@@ -190,12 +190,14 @@ def main():
     out = {'I0': I0, 'base_cum': base_cum, 'death': [], 'e2e': []}
 
     # ---------------- 生死检验 ----------------
-    print('\n=== death test (Precision vs I0=%.4f) ===' % I0, flush=True)
+    print('\n=== death test (Precision vs I0/(1+I0)=%.4f) ==='
+          % (I0 / (1.0 + I0)), flush=True)
+    THR = I0 / (1.0 + I0)
     for tau in TAU_SEEDS:
         cache_adj = {}
         for ei, e in enumerate(eps):
             B = np.where(e['m'] >= tau)[0]
-            C = np.where((e['m'] < tau) & (e['m'] > -3.0))[0]
+            C = np.where((e['m'] < 0.5) & (e['m'] > -3.0))[0]
             for dmax in D_MAX:
                 cache_adj[(ei, dmax)] = (B, adjacent(e, B, C, dmax))
         for kind in SCORES:
@@ -226,7 +228,7 @@ def main():
                     p = tp / max(tp + fp, 1)
                     row['p_top%d' % int(100 * t)] = p
                     line += 'T%d%%:%.3f%s ' % (100 * t, p,
-                                               '*' if p > I0 else ' ')
+                                               '*' if p > THR else ' ')
                 print(line, flush=True)
                 out['death'].append(row)
 
@@ -237,12 +239,13 @@ def main():
         B_all, adj_all = {}, {}
         for ei, e in enumerate(eps):
             B = np.where(e['m'] >= tau)[0]
-            C = np.where((e['m'] < tau) & (e['m'] > -3.0))[0]
+            C = np.where((e['m'] < 0.5) & (e['m'] > -3.0))[0]
             B_all[ei] = B
             adj_all[ei] = adjacent(e, B, C, 0.10)   # 固定 dmax 以省时
         for kind in SCORES:
             for top in TOPS:
                 ious, preds = [], []
+                n_rec = 0
                 for ei, e in enumerate(eps):
                     ell = e['m'][e['inv']].copy()
                     B, adj = B_all[ei], adj_all[ei]
@@ -259,6 +262,7 @@ def main():
                             sel = adj2[torch.topk(s2, kk).indices
                                        .cpu().numpy()]
                             ell[np.isin(e['inv'], sel)] = 1.0
+                            n_rec += len(sel)
                     pred = ell > 0.5
                     ious.append(iou_of(pred, e['y']))
                     preds.append(pred)
@@ -270,9 +274,10 @@ def main():
                 d = np.array(ious) - np.array(base_ious)
                 pse = d.std(ddof=1) / np.sqrt(N)
                 print('%-4s tau %.1f top %.0f%%  arith %.4f (d %+.4f t %+.2f)'
-                      '  cum %.4f' % (kind, tau, 100 * top, np.mean(ious),
-                                      d.mean(), d.mean() / pse if pse else 0,
-                                      cum), flush=True)
+                      '  cum %.4f  rec=%d'
+                      % (kind, tau, 100 * top, np.mean(ious), d.mean(),
+                         d.mean() / pse if pse else 0, cum, n_rec),
+                      flush=True)
 
     # ---------------- 2 折 CV ----------------
     half = N // 2
