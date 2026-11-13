@@ -80,10 +80,12 @@ def main():
         if 'base_iou' in mt:
             continue
         d = np.load(p)
-        ep = {k: (torch.from_numpy(d[k].astype(np.float32))
-                  if d[k].dtype == np.float16
-                  else torch.from_numpy(d[k].astype(np.int64)))
-              for k in d.files}
+        ep = {}
+        for k in d.files:
+            a = d[k]
+            ep[k] = torch.from_numpy(
+                a.astype(np.float32) if a.dtype.kind == 'f'
+                else a.astype(np.int64))
         mt['base_iou'] = margin_iou(
             {k: v.cuda() for k, v in ep.items()}, mt['y_full'])
 

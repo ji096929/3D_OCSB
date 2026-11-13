@@ -118,7 +118,10 @@ def load_eps(n, table):
                     'coord': coord, 'seg': seg, 'z_sp': z_sp,
                     'rgb_sp': rgb_sp, 'coord_sp': coord_sp,
                     'nrm_sp': nrm_sp, 'fg_frac': fg_frac,
-                    'cls': int(m['class']), 'N_neg': N_neg})
+                    'cls': int(m['class']), 'N_neg': N_neg,
+                    'u_y': v['u_y'].astype(np.int64),
+                    'u_seg': v['u_seg'].astype(np.int64),
+                    'u_h': v['u_h'].astype(np.float16)})
         if (i + 1) % 100 == 0:
             print('  loaded %d / %d' % (i + 1, len(metas)), flush=True)
     return eps

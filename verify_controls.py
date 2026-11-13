@@ -63,15 +63,36 @@ def main():
     print('检验 1  常数阈值平移  ell = q_margin - theta')
     print('%-7s %8s %8s' % ('theta', 'mIoU', 'delta'))
     base = None
+    base_cum = None
     for th in THETAS:
-        ious = []
+        ious, preds = [], []
         for ep in eps:
-            tp, un = tp_union(ep['q_margin'] - th, ep)
+            e = interp(ep['q_coord_full'].cpu().numpy().astype(np.float64),
+                       ep['q_coord'].cpu().numpy().astype(np.float64),
+                       (ep['q_margin'] - th).detach().cpu().numpy()
+                       .astype(np.float64))
+            pred = e > 0
+            y = ep['q_y_full'].cpu().numpy()
+            tp = int((pred & (y > 0)).sum())
+            un = int((pred | (y > 0)).sum())
             ious.append(tp / max(un, 1))
+            preds.append(pred)
         v = float(np.mean(ious))
         if th == 0.0:
             base = v
-        print('%-7.2f %8.4f %8s' % (th, v, '' if base is None else '%+.4f' % (v - base)))
+        # 累计 mIoU
+        tp_c, un_c = {}, {}
+        for pred, ep in zip(preds, eps):
+            c = ep['cls']
+            y = ep['q_y_full'].cpu().numpy()
+            tp_c[c] = tp_c.get(c, 0) + int((pred & (y > 0)).sum())
+            un_c[c] = un_c.get(c, 0) + int((pred | (y > 0)).sum())
+        cum = float(np.mean([tp_c[c] / max(un_c[c], 1) for c in tp_c]))
+        if th == 0.0:
+            base_cum = cum
+        print('%-7.2f %8.4f %8s  cum %.4f (%+.4f)'
+              % (th, v, '' if base is None else '%+.4f' % (v - base), cum,
+                 cum - (base_cum if base_cum is not None else cum)))
     print('baseline (theta=0) = %.4f' % base)
 
     # ---------- 检验 2：空间打乱 ----------
@@ -84,22 +105,42 @@ def main():
             out = m(ep, enable_csr=True)
             deltas.append(out['delta_mem'].detach())
     rng = np.random.RandomState(0)
-    print('%-24s %8s %8s %8s' % ('mode', 'gamma', 'mIoU', 'delta'))
+    print('%-24s %8s %8s %8s %8s'
+          % ('mode', 'gamma', 'mIoU', 'delta', 'cumul'))
     for g in (1.75, 2.0):
         real, meanr, shuf = [], [], []
+        ells = {'real': [], 'mean': [], 'shuf': []}
         for ep, d in zip(eps, deltas):
             dn = d.cpu().numpy()
-            real.append(tp_union(ep['q_margin'] + g * d, ep))
-            meanr.append(tp_union(ep['q_margin'] + g * float(dn.mean()), ep))
             perm = rng.permutation(len(dn))
-            shuf.append(tp_union(ep['q_margin'] + g * torch.from_numpy(
-                dn[perm]).cuda().to(d.dtype), ep))
-        for tag, tt in (('真实空间对齐', real), ('替换为任务均值', meanr),
-                        ('随机打乱顺序', shuf)):
+            e_real = ep['q_margin'] + g * d
+            e_mean = ep['q_margin'] + g * float(dn.mean())
+            e_shuf = ep['q_margin'] + g * torch.from_numpy(
+                dn[perm]).cuda().to(d.dtype)
+            real.append(tp_union(e_real, ep))
+            meanr.append(tp_union(e_mean, ep))
+            shuf.append(tp_union(e_shuf, ep))
+            ells['real'].append(e_real)
+            ells['mean'].append(e_mean)
+            ells['shuf'].append(e_shuf)
+        for tag, tt, key in (('真实空间对齐', real, 'real'),
+                             ('替换为任务均值', meanr, 'mean'),
+                             ('随机打乱顺序', shuf, 'shuf')):
             ious = [tp / max(un, 1) for tp, un in tt]
-            print('%-24s %8.2f %8.4f %+8.4f'
+            tp_c, un_c = {}, {}
+            for ell, ep in zip(ells[key], eps):
+                v = interp(ep['q_coord_full'].cpu().numpy().astype(np.float64),
+                           ep['q_coord'].cpu().numpy().astype(np.float64),
+                           ell.detach().cpu().numpy().astype(np.float64))
+                pred = v > 0
+                y = ep['q_y_full'].cpu().numpy()
+                c = ep['cls']
+                tp_c[c] = tp_c.get(c, 0) + int((pred & (y > 0)).sum())
+                un_c[c] = un_c.get(c, 0) + int((pred | (y > 0)).sum())
+            cum = float(np.mean([tp_c[c] / max(un_c[c], 1) for c in tp_c]))
+            print('%-24s %8.2f %8.4f %+8.4f %8.4f'
                   % (tag, g, float(np.mean(ious)),
-                     float(np.mean(ious)) - base))
+                     float(np.mean(ious)) - base, cum))
 
     # ---------- 检验 3：官方累计 mIoU ----------
     print('\n' + '=' * 70)
