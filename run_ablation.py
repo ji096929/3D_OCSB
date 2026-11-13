@@ -155,8 +155,8 @@ def eval_episode(model, ep, mode):
                         'P_bar': out['P_bar']}
 
 
-def run_split(model, paths, metas, table, mode):
-    ious, recs = [], []
+def run_split(model, paths, metas, table, mode, return_preds=False):
+    ious, recs, preds = [], [], []
     for p, mt in zip(paths, metas):
         bp = protos_for(table, mt['class'])
         ep = load_ep(p, bp)
@@ -180,6 +180,9 @@ def run_split(model, paths, metas, table, mode):
                       'auc': v_auc(out, aux['fg_reg'])})
         ious.append(iou)
         recs.append(r)
+        preds.append(m_interp > 0)
+    if return_preds:
+        return recs, preds
     return recs
 
 

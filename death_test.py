@@ -46,6 +46,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--n', type=int, default=560)
     ap.add_argument('--out', default='/data01/jh/data/ocsb_cache/death.json')
+    ap.add_argument('--w-phi', default='', help='训练后的 W_phi 权重路径')
     args = ap.parse_args()
 
     torch.manual_seed(0)
@@ -78,6 +79,12 @@ def main():
         if cmc is None:
             cmc = OCSBCMC(int(ep['s_h'].shape[1]), tau=0.1, tau_b=0.6,
                           m_anchor=3).cuda()
+            if args.w_phi:
+                w = torch.load(args.w_phi, map_location='cpu')
+                cmc.proj.weight.data.copy_(w.to(cmc.proj.weight.dtype))
+                print('loaded W_phi from', args.w_phi,
+                      'dev %.3f' % float((w - torch.eye(w.shape[0])).norm()),
+                      flush=True)
         with torch.no_grad():
             out = cmc(ep, use_csr=True)
         z_q = out['z_q']

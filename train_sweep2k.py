@@ -27,7 +27,7 @@ def main():
     ap.add_argument('--w-pos', type=float, default=2.0)
     ap.add_argument('--w-reg', type=float, default=2.0)
     ap.add_argument('--tau-s', type=float, default=1.0)
-    ap.add_argument('--gamma', type=float, default=0.5)
+    ap.add_argument('--gamma', type=float, default=2.0)
     ap.add_argument('--mode', default='omit_select',
                     choices=['omit_select', 'all'])
     ap.add_argument('--lam-o', type=float, default=1.0)
@@ -75,27 +75,35 @@ def main():
     m = OCSB(dim, tau=0.1, tau_b=0.6, fusion_mode='A',
              gamma_fuse=args.gamma).cuda()
 
-    if 'base_iou' not in vmeta[0]:
-        from run_ablation import margin_iou
-        for mt, p in zip(vmeta, vpaths):
-            d = np.load(p)
-            ep = {k: (torch.from_numpy(d[k].astype(np.float32))
-                      if d[k].dtype == np.float16
-                      else torch.from_numpy(d[k].astype(np.int64)))
-                  for k in d.files}
-            mt['base_iou'] = margin_iou(
-                {k: v.cuda() for k, v in ep.items()}, mt['y_full'])
+    from run_ablation import margin_iou
+    for mt, p in zip(vmeta, vpaths):
+        if 'base_iou' in mt:
+            continue
+        d = np.load(p)
+        ep = {k: (torch.from_numpy(d[k].astype(np.float32))
+                  if d[k].dtype == np.float16
+                  else torch.from_numpy(d[k].astype(np.int64)))
+              for k in d.files}
+        mt['base_iou'] = margin_iou(
+            {k: v.cuda() for k, v in ep.items()}, mt['y_full'])
 
     opt = torch.optim.Adam([{'params': m.proj.parameters()}], lr=args.lr)
     rng = np.random.RandomState(0)
     step, curve, evals = 0, [], []
 
     def evaluate():
-        recs = run_split(m, vpaths, vmeta, table, 'step5')
+        recs, preds = run_split(m, vpaths, vmeta, table, 'step5',
+                                return_preds=True)
         s = summarize(recs)
         s['step'] = step
         s['per_class'] = per_class(recs)
-        s['cum'] = float('nan')  # 由 phase4 侧统一计算
+        tp_c, un_c = {}, {}
+        for pred, mt in zip(preds, vmeta):
+            c = mt['class']
+            y = mt['y_full']
+            tp_c[c] = tp_c.get(c, 0) + int((pred & (y > 0)).sum())
+            un_c[c] = un_c.get(c, 0) + int((pred | (y > 0)).sum())
+        s['cum'] = float(np.mean([tp_c[c] / max(un_c[c], 1) for c in tp_c]))
         evals.append(s)
         print('  step %4d  arith %.4f (d %+.4f)  cum %.4f  Miss %.3f False %.3f'
               ' AUC %.3f' % (step, s['iou'], s['iou'] - s['base'], s['cum'],
@@ -142,7 +150,8 @@ def main():
            'curve': curve, 'evals': evals, 'final': final,
            'w_dev': float((m.proj.weight - torch.eye(dim, device='cuda')).norm())}
     json.dump(out, open(args.out, 'w'), indent=1)
-    print('->', args.out)
+    torch.save(m.proj.weight.detach().cpu(), args.out + '.wphi.pt')
+    print('->', args.out, '+ .wphi.pt')
 
 
 if __name__ == '__main__':
