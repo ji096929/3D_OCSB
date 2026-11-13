@@ -86,8 +86,18 @@ def main():
             sorted_inv = inv[order]
             bounds = np.searchsorted(sorted_inv, np.arange(n_u + 1))
             z_min = xyz[order, 2].min()
-            x_max, x_min = xyz[:, 0].max(), xyz[:, 0].min()
-            y_max, y_min = xyz[:, 1].max(), xyz[:, 1].min()
+            # 每个 block 的 1m 边界（场景绝对坐标）
+            pts_block = np.zeros(len(xyz), dtype=np.int64)
+            off = 0
+            block_bounds = []
+            for i, nm2 in enumerate(m['u']):
+                rr = np.load(os.path.join(DATA, nm2 + '.npy'))
+                n_b = len(rr)
+                pts_block[off:off + n_b] = i
+                x, y = rr[:, 0], rr[:, 1]
+                block_bounds.append((float(x.min()), float(x.max()),
+                                     float(y.min()), float(y.max())))
+                off += n_b
             for r in range(n_u):
                 sl = order[bounds[r]:bounds[r + 1]]
                 if len(sl) < 4:
@@ -100,10 +110,12 @@ def main():
                 rgbs = rgb[sl]
                 bright = float(rgbs.mean())
                 std = float(rgbs.std())
-                edge = ((np.abs(pts[:, 0] - x_max) < 0.05) |
-                        (np.abs(pts[:, 0] - x_min) < 0.05) |
-                        (np.abs(pts[:, 1] - y_max) < 0.05) |
-                        (np.abs(pts[:, 1] - y_min) < 0.05))
+                blk = int(pts_block[sl[0]])
+                bx0, bx1, by0, by1 = block_bounds[blk]
+                edge = ((np.abs(pts[:, 0] - bx1) < 0.05) |
+                        (np.abs(pts[:, 0] - bx0) < 0.05) |
+                        (np.abs(pts[:, 1] - by1) < 0.05) |
+                        (np.abs(pts[:, 1] - by0) < 0.05))
                 edge_frac = float(edge.mean())
                 z_rel = float(pts[:, 2].mean() - z_min)
                 for key, mask in (('B_pos', B_pos), ('B_neg', B_neg),
