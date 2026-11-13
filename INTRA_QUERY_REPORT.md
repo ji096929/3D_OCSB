@@ -264,3 +264,36 @@ m(R) = mean_{i∈R} q_margin(i)      # 查询集自身 .segs.json 超点
 - `phase3_v2.py` — 同上，补齐 Cumul 与 CV
 - `phase4_v2.py` — 2 折 CV 盲测消融表 + 逐类
 - 缓存：`/data01/jh/data/ocsb_cache/`（560 val + 200 train + intra 补充字段）
+
+---
+
+## 附：训练集来源核查（2026-11-13）
+
+### 发现
+
+| 检查项 | 结果 |
+|---|---|
+| `blocks_bs1_s1/data` 场景数 | 312 |
+| 其中 train split（`scannetv2_train.txt`，1201 场景） | **0** |
+| 其中 val split | **312** |
+| `train_200` 的 support 场景 | 135，**100% 在 val split** |
+| `train_200` 与 `val_560` 的场景重叠 | **154 / 187（82%）** |
+
+COSeg 的预处理只发布了 val 的 blocks。之前 Step 5 的训练任务全部来自 val 场景，
+与验证集有 82% 的场景重叠——虽然类别不同（train=base、val=novel），但场景级泄漏存在。
+
+### 修复
+
+`scannet_raw/scans` 包含全部 1201 个 train 场景的原始 ply + segs.json。已：
+1. 从 train split 取 400 个场景，用 `collect_train_blocks.py` 生成场景 npy（第 8 列保留 seg id）
+2. 用 `room2blocks.py` 切成 9425 个 1m block
+3. 采 2000 个零泄漏训练任务（10 个 base 类 × 200，跨场景）
+
+**踩到的坑**：`get_raw2scannet_label_map` 依赖模块全局 `CLASS_NAMES`，
+如果先调用它再设置 `CLASS_NAMES`，所有 `nyu40_name` 都会映射成 "unannotated"（label 0）。
+第一轮 400 个场景因此全部是 label 0，修复顺序后重跑。
+
+### 与 val_560 的关系
+
+train split 的 400 个场景与 val_560 的 260 个 val 场景**完全不相交**，
+所以现有 `val_560` 缓存可以直接复用，不需要重建。
