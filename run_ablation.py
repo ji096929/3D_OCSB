@@ -239,6 +239,16 @@ def summarize(recs):
     return out
 
 
+def cum_of_preds(preds, metas):
+    tp_c, un_c = {}, {}
+    for pred, mt in zip(preds, metas):
+        c = mt['class']
+        y = mt['y_full']
+        tp_c[c] = tp_c.get(c, 0) + int((pred & (y > 0)).sum())
+        un_c[c] = un_c.get(c, 0) + int((pred | (y > 0)).sum())
+    return float(np.mean([tp_c[c] / max(un_c[c], 1) for c in tp_c]))
+
+
 def per_class(recs):
     d = {}
     for r in recs:
@@ -326,12 +336,14 @@ def main():
                  fusion_mode=args.fusion_mode,
                  gamma_fuse=args.gamma_fuse).cuda()
         t0 = time.time()
-        recs = run_split(m, val_paths, val_meta, table, mode)
+        recs, preds = run_split(m, val_paths, val_meta, table, mode,
+                                return_preds=True)
         s = summarize(recs)
         s['sec'] = time.time() - t0
+        s['cum'] = cum_of_preds(preds, val_meta)
         results[tag] = s
-        print('%s  IoU %.4f  MissRec %.3f  FalseRec %.3f  Cprec %.3f  AUC %.3f'
-              % (tag, s['iou'], s['missed_recall'], s['false_rate'],
+        print('%s  IoU %.4f  cum %.4f  MissRec %.3f  FalseRec %.3f  Cprec %.3f  AUC %.3f'
+              % (tag, s['iou'], s['cum'], s['missed_recall'], s['false_rate'],
                  s['c_prec'], s['auc']), flush=True)
         results[tag + '_per_ep'] = recs
         results[tag + '_per_class'] = per_class(recs)
@@ -349,16 +361,19 @@ def main():
             args.lam_o, args.lam_s, mode, w_reg=args.w_reg,
             w_pos=args.w_pos, tau_s=args.tau_s, eval_fn=eval_fn,
             eval_every=args.eval_every)
-        recs = run_split(m, val_paths, val_meta, table, 'step5')
+        recs, preds = run_split(m, val_paths, val_meta, table, 'step5',
+                                return_preds=True)
         s = summarize(recs)
+        s['cum'] = cum_of_preds(preds, val_meta)
         s['curve'] = curve
         s['evals'] = evals
         s['per_class'] = per_class(recs)
         s['w_dev'] = float((m.proj.weight - torch.eye(dim, device='cuda')).norm())
         s['gamma'] = float(m.gamma)
+        s['cum'] = cum_of_preds(preds, val_meta)
         results[tag] = s
-        print('%s  IoU %.4f  MissRec %.3f  FalseRec %.3f  Cprec %.3f  AUC %.3f'
-              % (tag, s['iou'], s['missed_recall'], s['false_rate'],
+        print('%s  IoU %.4f  cum %.4f  MissRec %.3f  FalseRec %.3f  Cprec %.3f  AUC %.3f'
+              % (tag, s['iou'], s['cum'], s['missed_recall'], s['false_rate'],
                  s['c_prec'], s['auc']), flush=True)
         results[tag + '_per_ep'] = recs
         results[tag + '_per_class'] = per_class(recs)
