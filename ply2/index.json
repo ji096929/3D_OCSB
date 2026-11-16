@@ -1,0 +1,160 @@
+[
+ {
+  "task": 7,
+  "block": "scene0338_02_block_13",
+  "file": "task07_b0_scene0338_02_block_13",
+  "n_pts": 6477,
+  "n_B_pos": 927,
+  "n_B_neg": 446,
+  "n_C_pos": 541
+ },
+ {
+  "task": 7,
+  "block": "scene0606_00_block_3",
+  "file": "task07_b1_scene0606_00_block_3",
+  "n_pts": 14719,
+  "n_B_pos": 686,
+  "n_B_neg": 1128,
+  "n_C_pos": 0
+ },
+ {
+  "task": 7,
+  "block": "scene0149_00_block_4",
+  "file": "task07_b2_scene0149_00_block_4",
+  "n_pts": 4336,
+  "n_B_pos": 310,
+  "n_B_neg": 143,
+  "n_C_pos": 0
+ },
+ {
+  "task": 9,
+  "block": "scene0653_00_block_9",
+  "file": "task09_b0_scene0653_00_block_9",
+  "n_pts": 6592,
+  "n_B_pos": 2162,
+  "n_B_neg": 3740,
+  "n_C_pos": 0
+ },
+ {
+  "task": 9,
+  "block": "scene0591_02_block_15",
+  "file": "task09_b1_scene0591_02_block_15",
+  "n_pts": 3107,
+  "n_B_pos": 265,
+  "n_B_neg": 2739,
+  "n_C_pos": 0
+ },
+ {
+  "task": 9,
+  "block": "scene0351_01_block_0",
+  "file": "task09_b2_scene0351_01_block_0",
+  "n_pts": 1998,
+  "n_B_pos": 158,
+  "n_B_neg": 920,
+  "n_C_pos": 0
+ },
+ {
+  "task": 11,
+  "block": "scene0169_00_block_37",
+  "file": "task11_b0_scene0169_00_block_37",
+  "n_pts": 3816,
+  "n_B_pos": 494,
+  "n_B_neg": 2095,
+  "n_C_pos": 1028
+ },
+ {
+  "task": 11,
+  "block": "scene0131_02_block_19",
+  "file": "task11_b1_scene0131_02_block_19",
+  "n_pts": 6635,
+  "n_B_pos": 564,
+  "n_B_neg": 1061,
+  "n_C_pos": 3367
+ },
+ {
+  "task": 11,
+  "block": "scene0616_01_block_5",
+  "file": "task11_b2_scene0616_01_block_5",
+  "n_pts": 4927,
+  "n_B_pos": 0,
+  "n_B_neg": 2307,
+  "n_C_pos": 19
+ },
+ {
+  "task": 7,
+  "scene": "scene0149_00",
+  "file": "task07_room_scene0149_00",
+  "n_room": 162396,
+  "n_inside": 6011
+ },
+ {
+  "task": 7,
+  "scene": "scene0328_00",
+  "file": "task07_room_scene0328_00",
+  "n_room": 111467,
+  "n_inside": 11579
+ },
+ {
+  "task": 7,
+  "scene": "scene0338_02",
+  "file": "task07_room_scene0338_02",
+  "n_room": 84445,
+  "n_inside": 8413
+ },
+ {
+  "task": 7,
+  "scene": "scene0606_00",
+  "file": "task07_room_scene0606_00",
+  "n_room": 164401,
+  "n_inside": 7399
+ },
+ {
+  "task": 9,
+  "scene": "scene0278_01",
+  "file": "task09_room_scene0278_01",
+  "n_room": 83269,
+  "n_inside": 7784
+ },
+ {
+  "task": 9,
+  "scene": "scene0351_01",
+  "file": "task09_room_scene0351_01",
+  "n_room": 170840,
+  "n_inside": 1516
+ },
+ {
+  "task": 9,
+  "scene": "scene0591_02",
+  "file": "task09_room_scene0591_02",
+  "n_room": 187656,
+  "n_inside": 6827
+ },
+ {
+  "task": 9,
+  "scene": "scene0653_00",
+  "file": "task09_room_scene0653_00",
+  "n_room": 284951,
+  "n_inside": 7162
+ },
+ {
+  "task": 11,
+  "scene": "scene0131_02",
+  "file": "task11_room_scene0131_02",
+  "n_room": 140599,
+  "n_inside": 8256
+ },
+ {
+  "task": 11,
+  "scene": "scene0169_00",
+  "file": "task11_room_scene0169_00",
+  "n_room": 239354,
+  "n_inside": 4617
+ },
+ {
+  "task": 11,
+  "scene": "scene0616_01",
+  "file": "task11_room_scene0616_01",
+  "n_room": 297626,
+  "n_inside": 5661
+ }
+]

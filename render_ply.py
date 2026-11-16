@@ -60,7 +60,7 @@ def show(ax, xyz, rgb, elev, azim, title):
                        max(np.ptp(xyz[:, 2]), 1e-3)))
 
 
-def render(name, xyz, rgb):
+def render(name, xyz, rgb, out_dir=None):
     rng = np.random.RandomState(0)
     if len(xyz) > MAX_PTS:
         idx = rng.choice(len(xyz), MAX_PTS, replace=False)
@@ -72,7 +72,7 @@ def render(name, xyz, rgb):
         if i == 2:
             ax.legend(loc='upper right', fontsize=7, markerscale=2)
     plt.tight_layout()
-    dst = os.path.join(OUT_DIR, '%s.png' % name)
+    dst = os.path.join(out_dir or OUT_DIR, '%s.png' % name)
     plt.savefig(dst, dpi=120, bbox_inches='tight')
     plt.close()
     print('  ->', dst, flush=True)
@@ -81,9 +81,11 @@ def render(name, xyz, rgb):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', default='')
+    ap.add_argument('--dir', default=PLY_DIR)
+    ap.add_argument('--out', default=OUT_DIR)
     args = ap.parse_args()
-    os.makedirs(OUT_DIR, exist_ok=True)
-    files = sorted(glob.glob(os.path.join(PLY_DIR, '*_tag.ply')))
+    os.makedirs(args.out, exist_ok=True)
+    files = sorted(glob.glob(os.path.join(args.dir, '*_tag.ply')))
     if args.only:
         keep = [x.strip() for x in args.only.split(',')]
         files = [f for f in files
@@ -93,7 +95,7 @@ def main():
         base = os.path.basename(p)[:-4]
         xyz, rgb = read_ply(p)
         print('rendering', base, len(xyz), flush=True)
-        render(base, xyz, rgb)
+        render(base, xyz, rgb, args.out)
 
 
 if __name__ == '__main__':
