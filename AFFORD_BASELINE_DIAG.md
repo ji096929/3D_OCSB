@@ -4,6 +4,8 @@
 约束：`/nas_data/ljy/` 全程只读；所有输出在 `/data01/jh/afford_diag/`。
 环境：`/data01/jh/conda_envs/sonata`（Python 3.10 + torch 2.5.0+cu124，补装了 cupti/nccl 与 9 个 Python 包）。
 
+> 后续工作见 [AFFORD_CEILING_3DIR.md](AFFORD_CEILING_3DIR.md)：partial 的 Oracle 上限、3DIR/PIAD 的逐类逐动作解剖、Knife-stab 饱和分析、历史校准门消融、23 类全监督上界。
+
 ---
 
 ## 0. 结论
