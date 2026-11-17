@@ -29,6 +29,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 import torch.nn.functional as Fs
+from scipy.spatial import cKDTree
 
 sys.path.insert(0, '/data01/jh/code/COSeg')
 sys.path.insert(0, '/data01/jh/code')
@@ -125,20 +126,22 @@ def build_proto(model, f, mask, k=K):
 
 
 @torch.no_grad()
-def predict_agg(model, qf, sparse_list, lam, dev):
+def predict_agg(model, qf, sparse_list, lam, dev, mode='mix', margin=0.0):
     """复刻 COSeg.forward 的后半段，支持把多个原型集的**相关性**加权融合。
 
     参数
     ----
     sparse_list : [S 原型, U 原型_1, ..., U 原型_m]，每个都是 (2K, C)
-    lam         : U 原型的权重。0 或只有一项时完全退化成 Baseline，
-                  也就是只用 S 的原型。
+    lam         : U 原型的权重。0 或只有一项时完全退化成 Baseline。
+    mode        : 'mix'       双边线性混合 (1-λ)·S + λ·U
+                  'one_sided' 单向遗漏修补 S + λ·relu(U − S − margin)
+                              U 只能把相关性往上抬，不能否决 S 已认出的点
+    margin      : one_sided 模式下 U 要超过 S 多少个单位才生效
 
     融合发生在余弦相关性上而不是原型上：
         corr = (1-λ) * corr_S + λ * mean_m corr_U_m
     因为 `lin1` 是线性的且 (1-λ)+λ=1，所以它与"先各自过 lin1 再平均"
-    严格等价，偏置项正好抵消。这样 U 只改变每个原型槽位的相似度，
-    不改变后续 HCA / kpconv 的输入维度。
+    严格等价，偏置项正好抵消。
 
     返回
     ----
@@ -157,7 +160,11 @@ def predict_agg(model, qf, sparse_list, lam, dev):
     if len(corrs) == 1 or lam <= 0:
         corr = corrs[0]
     else:
-        corr = (1.0 - lam) * corrs[0] + lam * torch.stack(corrs[1:]).mean(0)
+        cu = torch.stack(corrs[1:]).mean(0)
+        if mode == 'one_sided':
+            corr = corrs[0] + lam * Fs.relu(cu - corrs[0] - margin)
+        else:
+            corr = (1.0 - lam) * corrs[0] + lam * cu
 
     # (N_down, 2K) -> (N_down, 2, K)；2 == n_way+1（背景 + 前景）
     corr = model.lin1(corr.view(corr.shape[0], 2, -1)).permute(2, 1, 0).unsqueeze(0)
@@ -239,3 +246,16 @@ def episode_tensors(block, cls):
     x = torch.cat([block['coord'], block['feat']], 1)
     y = (block['label'] == cls).long()
     return x, y
+
+
+def seg_downsample(xyz, seg, cd):
+    """把原始分辨率的超点 id 映射到降采样点：取最近原始点的 seg。
+
+    `getFeatures` 只返回降采样点，而超点 id 只在原始分辨率上有，所以要用
+    KDTree 做一次最近邻映射。同一个超点内的降采样点会共享同一个 id。
+    """
+    if xyz.shape[0] == cd.shape[0]:
+        return seg
+    tree = cKDTree(xyz.detach().cpu().numpy())
+    _, idx = tree.query(cd.detach().cpu().numpy())
+    return torch.from_numpy(np.asarray(seg.cpu().numpy())[idx]).to(cd.device)
