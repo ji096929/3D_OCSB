@@ -126,7 +126,8 @@ def build_proto(model, f, mask, k=K):
 
 
 @torch.no_grad()
-def predict_agg(model, qf, sparse_list, lam, dev, mode='mix', margin=0.0):
+def predict_agg(model, qf, sparse_list, lam, dev, mode='mix', margin=0.0,
+                proto_weights=None):
     """复刻 COSeg.forward 的后半段，支持把多个原型集的**相关性**加权融合。
 
     参数
@@ -137,6 +138,8 @@ def predict_agg(model, qf, sparse_list, lam, dev, mode='mix', margin=0.0):
                   'one_sided' 单向遗漏修补 S + λ·relu(U − S − margin)
                               U 只能把相关性往上抬，不能否决 S 已认出的点
     margin      : one_sided 模式下 U 要超过 S 多少个单位才生效
+    proto_weights : (2K,) 逐原型权重，直接乘在 U 侧的相关性上。用来保留
+                  BridgeScorer 的连续可信度，而不是把选中的点一律当 1.0。
 
     融合发生在余弦相关性上而不是原型上：
         corr = (1-λ) * corr_S + λ * mean_m corr_U_m
@@ -161,6 +164,8 @@ def predict_agg(model, qf, sparse_list, lam, dev, mode='mix', margin=0.0):
         corr = corrs[0]
     else:
         cu = torch.stack(corrs[1:]).mean(0)
+        if proto_weights is not None:
+            cu = cu * proto_weights[None, :].to(cu.device).to(cu.dtype)
         if mode == 'one_sided':
             corr = corrs[0] + lam * Fs.relu(cu - corrs[0] - margin)
         else:

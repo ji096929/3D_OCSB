@@ -32,7 +32,7 @@ CACHE = '/data01/jh/data/ocsb_cache'
 NEW_IDS = [10, 6, 7, 19, 3, 13, 12, 5, 14, 2]
 
 
-def load_recs(prefix='v3g_s[0-3].pt'):
+def load_recs(prefix='v3h_s[0-7].pt'):
     recs = []
     for f in sorted(glob.glob(os.path.join(CACHE, prefix))):
         recs += torch.load(f)
@@ -132,7 +132,8 @@ def main():
     ap.add_argument('--delta', type=float, default=0.0,
                     help='任务标签阈值：ΔIoU > delta 记为正')
     ap.add_argument('--lam', type=float, default=0.5)
-    ap.add_argument('--topks', default='0.20,0.25,0.35')
+    ap.add_argument('--off-ratios', default='0.15,0.20,0.30',
+                    help='关掉预测亏损风险最高的这一比例任务，其余全开')
     ap.add_argument('--n-boot', type=int, default=200)
     ap.add_argument('--u-key', default='pred_u_solo',
                     help='用哪种 pred_U：pred_u_solo / pred_u_l0.3 / pred_u_l0.5 / pred_u_l0.7')
@@ -160,7 +161,7 @@ def main():
     half = len(eps_all) // 2
     folds = [(set(eps_all[:half]), set(eps_all[half:]), 'A->B'),
              (set(eps_all[half:]), set(eps_all[:half]), 'B->A')]
-    topks = [float(x) for x in args.topks.split(',')]
+    offs = [float(x) for x in args.off_ratios.split(',')]
 
     all_res = {}
     for tr, te, tag in folds:
@@ -180,9 +181,11 @@ def main():
         te_recs = [r for r in recs if r['g_ep'] in te]
         print('%-8s %6s %9s %9s %9s %9s' % (
             'topk', 'n_on', 'mode', 'Cumul', 'dCumul', 'Q1-Q3'))
-        for k in topks:
-            thr = np.quantile(p_tr, 1 - k)   # 严格用训练折分位，避免偷看测试集
-            on = {e for e, p in zip([r['g_ep'] for r in te_recs], p_te) if p >= thr}
+        for r in offs:
+            # 关掉训练折里 p_open 最低的 r（这些任务 pred_U 更可能更差）
+            thr = np.quantile(p_tr, r)
+            on = {e for e, pp in zip([r['g_ep'] for r in te_recs], p_te)
+                  if pp >= thr}
             lam_map = {e: (args.lam if e in on else 0.0) for e in on}
             for mode in ('bilinear', 'one_sided'):
                 cu, _, per_ep = evaluate(te_recs, lam_map, mode, key)
@@ -203,11 +206,11 @@ def main():
                 lo, hi, prob = bootstrap(te_recs, lam_map, mode, base_ious,
                                          n_boot=args.n_boot, key=key)
                 print('%-8.2f %6d %9s %9.4f %+9.4f %+9.2f   [%+.2f,%+.2f] P=%.2f  Q4/Q5 %+.2f/%+.2f' % (
-                    k, len(on), mode, cu, cu - base_cu,
+                    1 - r, len(on), mode, cu, cu - base_cu,
                     float(np.mean(bins[:3])), lo * 100, hi * 100, prob,
                     bins[3], bins[4]))
                 all_res.setdefault(tag, []).append(dict(
-                    k=k, mode=mode, cumul=cu, d=cu - base_cu,
+                    keep=1 - r, mode=mode, cumul=cu, d=cu - base_cu,
                     bins=bins, ci=[lo, hi], prob=prob, n_on=len(on)))
 
     json.dump(all_res, open(args.out, 'w'), indent=1)
