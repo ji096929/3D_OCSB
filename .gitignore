@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# 数据与实验产物（体积大、可重跑）
+*.npz
+*.npy
+*.pth
+*.pt
+*.ckpt
+*.weights
+*.onnx
+*.bin
+*.safetensors
+results/
+logs/
+output/
+*.log
+ply_png/
+ply2_png/
+
+# 图片：报告里引用的图如果要入库，用 git add -f 单独加
+*.png
+*.jpg
+
+# IDE / 系统
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Windows 设备名残留（ssh 2>NUL 造的）
+NUL
