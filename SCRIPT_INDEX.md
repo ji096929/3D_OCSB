@@ -6,7 +6,7 @@
 
 | 目录 | 文件数 | 用途 | 状态 |
 |---|---:|---|---|
-| `ocsb_now/` | 3 | 当前主线（OCSB 第一步/第二步） | ★ 在跑，不要动 |
+| `ocsb_now/` | 4 | 当前主线（OCSB 第一步/第二步） | ★ 在用 |
 | `lib/` | 7 | 被 import 的核心库 | 禁止移动/改名 |
 | `tools/` | 16 | 数据准备 / 缓存构建 / 可视化 | 可重跑 |
 | `_archive/a1_early_signal/` | 31 | A1 早期信号搜索（11/05–11/06） | 已归档 |
@@ -23,15 +23,14 @@
 
 | 脚本 | 行 | 用途 |
 |---|---:|---|
-| `post_ub560.py` | 231 | 合并分片 + 配对 t + 2 折 CV + 逐类 + 难度分层；带分片/去重/跨轮 Baseline 校验 |
-| `repro_probe.py` | 60 | 同进程连跑 3 次，打印各阶段校验和，定位 Baseline 随机源 |
-| `repro_probe2.py` | 68 | 锁种子后两个独立进程比对同一 g_ep 的 Baseline IoU |
-| `upper_bound_v2.py` | 245 | 4 行上限 × λ网格；predict_agg 复刻 COSeg 后半段；per-episode 种子锁 |
-| `verify_replicate.py` | 82 | 自检 predict_agg ≈ 原生 forward（已通过） |
+| `ocsb_core.py` | 241 | 共用底座：种子锁、模型加载、episode 构造、`feats_one`/`build_proto`/`predict_agg`/`build_u_sparse`/`iou_counts` |
+| `upper_bound.py` | 151 | 主实验：Baseline + Naive-B/Oracle-B/Oracle-B+C × 6 档 λ，只剩流程编排 |
+| `post_ub560.py` | 254 | 后处理：合并分片 + 配对 t + 2 折 CV + 逐类 + 难度分层；带跨轮 Baseline 校验 |
+| `check.py` | 139 | 三种校验合一个入口：`replicate`（对比原生 forward）/ `same`（同进程）/ `cross`（跨进程） |
 
 ## `lib/` — 被 import 的核心库
 
-**状态**：禁止移动/改名 ｜ **对应报告**：ocsb_now 的两个脚本都依赖 diag_bc + ring4_isolated
+**状态**：禁止移动/改名 ｜ **对应报告**：ocsb_now 的四个脚本都依赖 diag_bc + ring4_isolated
 
 | 脚本 | 行 | 用途 |
 |---|---:|---|
