@@ -213,20 +213,26 @@ def main():
                   l, n * 100, ob * 100, (n - ob) * 100,
                   obc * 100, (obc - ob) * 100))
 
-    print('\n=== 表5 按 Baseline 难度分层（λ=%.1f 的逐集 dIoU） ===' % PRE_LAM)
-    dmap = {b: ep_map(rows, '%s_l%.1f' % (b, PRE_LAM)) for b in BASES}
-    ks = [k for k in sorted(bmap) if all(k in dmap[b] for b in BASES)]
-    order = sorted(ks, key=lambda k: bmap[k])
-    q = len(order) // 5
-    print('%-6s %6s %9s %10s %10s %10s' % (
-        'bin', 'n', 'baseIoU', 'dNaive', 'dOracleB', 'dOracleBC'))
-    for i in range(5):
-        seg = order[i * q:(i + 1) * q] if i < 4 else order[4 * q:]
-        if not seg:
-            continue
-        row = [np.mean([dmap[b][k] - bmap[k] for k in seg]) for b in BASES]
-        print('Q%-5d %6d %9.4f %+10.4f %+10.4f %+10.4f' % (
-            i + 1, len(seg), np.mean([bmap[k] for k in seg]), *row))
+    print('\n=== 表5 按 Baseline 难度分层（逐集配对差，pp） ===')
+    print('每个 λ 一张表；最后一列 C_pos 净增 = Oracle-B+C − Oracle-B')
+    for lam in [x for x in (0.3, 0.5, 0.7) if x in lams]:
+        dmap = {b: ep_map(rows, '%s_l%.1f' % (b, lam)) for b in BASES}
+        ks = [k for k in sorted(bmap) if all(k in dmap[b] for b in BASES)]
+        order = sorted(ks, key=lambda k: bmap[k])
+        q = len(order) // 5
+        print('\n-- λ=%.1f --' % lam)
+        print('%-5s %5s %9s %9s %9s %9s %10s' % (
+            'bin', 'n', 'baseIoU', 'dNaive', 'dOracleB', 'dOracleBC', 'C_pos'))
+        for i in range(5):
+            seg = order[i * q:(i + 1) * q] if i < 4 else order[4 * q:]
+            if not seg:
+                continue
+            d = {b: np.mean([dmap[b][k] - bmap[k] for k in seg]) for b in BASES}
+            print('Q%-4d %5d %9.4f %+9.2f %+9.2f %+9.2f %+10.2f' % (
+                i + 1, len(seg), np.mean([bmap[k] for k in seg]),
+                d['Naive-B'] * 100, d['Oracle-B'] * 100,
+                d['Oracle-B+C'] * 100,
+                (d['Oracle-B+C'] - d['Oracle-B']) * 100))
 
     slice50 = set(range(50))
     if len(eps_all) > 50 and slice50 <= set(eps_all):

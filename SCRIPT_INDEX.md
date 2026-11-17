@@ -6,7 +6,7 @@
 
 | 目录 | 文件数 | 用途 | 状态 |
 |---|---:|---|---|
-| `ocsb_now/` | 4 | 当前主线（OCSB 第一步/第二步） | ★ 在用 |
+| `ocsb_now/` | 6 | 当前主线（OCSB 第一/二步） | 在用；OASB/CSR 已证伪 |
 | `lib/` | 7 | 被 import 的核心库 | 禁止移动/改名 |
 | `tools/` | 16 | 数据准备 / 缓存构建 / 可视化 | 可重跑 |
 | `_archive/a1_early_signal/` | 31 | A1 早期信号搜索（11/05–11/06） | 已归档 |
@@ -27,6 +27,8 @@
 | `upper_bound.py` | 151 | 主实验：Baseline + Naive-B/Oracle-B/Oracle-B+C × 6 档 λ，只剩流程编排 |
 | `post_ub560.py` | 254 | 后处理：合并分片 + 配对 t + 2 折 CV + 逐类 + 难度分层；带跨轮 Baseline 校验 |
 | `check.py` | 139 | 三种校验合一个入口：`replicate`（对比原生 forward）/ `same`（同进程）/ `cross`（跨进程） |
+| `ocsb_advanced.py` | 355 | OASB + CSR + λ_adap 的五步实现；**负结果，保留作记录** |
+| `purity_analysis.py` | 198 | 提纯信号 AUC 分析：证明 B 在特征空间不可分 |
 
 ## `lib/` — 被 import 的核心库
 
@@ -236,6 +238,7 @@
 | `WEAK_SUPPORT_REPORT.md` | A5 弱标注 |
 | `AFFORD_BASELINE_DIAG.md` | A6 affordance 基线 |
 | `AFFORD_CEILING_3DIR.md` | A6 3DIR 上限（795 行） |
+| `OCSB_OASB_CSR_REPORT.md` | OASB/CSR 重启验证：零训练提纯的否证 |
 
 ## 产物目录（非脚本，未移动）
 
