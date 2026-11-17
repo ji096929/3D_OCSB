@@ -6,7 +6,7 @@
 
 | 目录 | 文件数 | 用途 | 状态 |
 |---|---:|---|---|
-| `ocsb_now/` | 10 | 当前主线（OCSB 第一/二/三步） | 在用；P3 零训练基线已转正 |
+| `ocsb_now/` | 16 | 当前主线（OCSB 第一/二/三步） | 在用；门控已证伪，固定融合 +0.67 |
 | `lib/` | 7 | 被 import 的核心库 | 禁止移动/改名 |
 | `tools/` | 16 | 数据准备 / 缓存构建 / 可视化 | 可重跑 |
 | `_archive/a1_early_signal/` | 31 | A1 早期信号搜索（11/05–11/06） | 已归档 |
@@ -34,6 +34,12 @@
 | `gate_probe.py` | 143 | 门控信号探针：找到 sim_fg_q（AUC 0.751） |
 | `ocsb_v3.py` | 270 | 三层遗漏条件化桥接：P1 提纯 / P2 单向 / P3 门控 |
 | `post_v3.py` | 199 | v3 后处理：2 折 CV 选参 + 分层 + TP/FP/FN |
+| `v3_build_cache.py` | 175 | 缓存 BridgeScorer 的 10 维相关性特征 |
+| `train_bridge_scorer.py` | 160 | 训练 10→16→1 打分器（193 参数，测试折 AUC 0.70） |
+| `v3_build_gate_cache.py` | 200 | 旧版门控缓存（含 Bug A/B/C，仅留档） |
+| `v3g_build_cache.py` | 230 | 修复版缓存：块择优 / B-C 分档 / solo+融合双路 / 折外 scorer |
+| `train_omission_gate.py` | 200 | 逐点门控（泄漏版，结果作废） |
+| `train_episode_gate.py` | 215 | 任务级门控 11 参数（干净两折，已验证归零） |
 
 ## `lib/` — 被 import 的核心库
 
@@ -245,6 +251,7 @@
 | `AFFORD_CEILING_3DIR.md` | A6 3DIR 上限（795 行） |
 | `OCSB_OASB_CSR_REPORT.md` | OASB/CSR 重启验证：零训练提纯的否证 |
 | `OCSB_V3_REPORT.md` | 三层遗漏条件化桥接（零训练基线 +0.71pp） |
+| `OCSB_STAGE2_REPORT.md` | Stage II：门控探索与归零（固定融合 +0.67） |
 
 ## 产物目录（非脚本，未移动）
 
