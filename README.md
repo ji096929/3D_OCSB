@@ -46,6 +46,7 @@
 ├── GFS_VL_CONCLUSION.md      ← Idea B 的完整结论与探索过程（含全部 log 路径）
 ├── 3D OCSB原始idea.md         ← Idea A 的原始 Method 初稿（顶部已加结案指针）
 ├── docs/ocsb_legacy/          ← Idea A 时期的 22 份报告
+├── docs/SERVER_CACHE_INDEX.md ← **服务器缓存索引**（哪些缓存在、能干什么、重建多久）
 ├── ocsb_now/                  ← 两个 idea 的脚本（GFS 阶段的对应服务器 /data01/jh/code/ps_diag）
 ├── weights/                   ← 本地权重备份（sonata.pth，414MB）
 ├── wheels/                    ← 离线安装包（spconv / torch_scatter，81MB）
