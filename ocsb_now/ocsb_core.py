@@ -108,8 +108,9 @@ def feats_one(model, x, y, dev):
     """
     off = torch.tensor([len(x)], dtype=torch.int32)
     fd, cd, ol, yl, _, _ = model.getFeatures(
-        x.to(dev), off.to(dev), y.to(dev), None)
-    return dict(fd=fd, cd=cd, ol=ol, yl=yl, xyz=x[:, :3].to(dev), off=off.to(dev))
+        x.contiguous().to(dev), off.to(dev), y.to(dev), None)
+    return dict(fd=fd, cd=cd, ol=ol, yl=yl,
+                xyz=x[:, :3].contiguous().to(dev), off=off.to(dev))
 
 
 @torch.no_grad()

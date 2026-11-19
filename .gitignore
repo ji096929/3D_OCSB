@@ -36,3 +36,8 @@ Thumbs.db
 
 # Windows 设备名残留（ssh 2>NUL 造的）
 NUL
+
+# 点云可视化与离线安装包（体积大，不入库）
+*.ply
+*.whl
+_archive/a8_viz/

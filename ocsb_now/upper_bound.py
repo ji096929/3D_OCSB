@@ -48,12 +48,41 @@ def main():
     ap.add_argument('--fg-hi', type=float, default=0.7, help='前景候选的置信阈')
     ap.add_argument('--bg-lo', type=float, default=0.2, help='高置信背景的置信阈')
     ap.add_argument('--out', default=os.path.join(CACHE, 'upper_bound.json'))
+    ap.add_argument('--min-gt', type=float, default=0.0,
+                    help='只保留 query 目标占比 >= 该值的 episode；'
+                         '官方 get_class2scans 的阈值是 0.05')
     args = ap.parse_args()
 
     names = load_class_names()
-    eps = build_episodes(args.per_class, args.shard, args.shards)
-    print('episodes %d  (per_class=%d  shard=%d/%d)' % (
-        len(eps), args.per_class, args.shard, args.shards), flush=True)
+    # 无论是否过滤，都用完整的 539 集列表来定位 episode，
+    # 这样 g_ep 仍是原始全局编号，seed_everything(10000+g_ep) 与分片方式无关。
+    eps_all = build_episodes(args.per_class)
+    if args.min_gt > 0:
+        gt_cache = os.path.join(CACHE, 'val_query_gt.json')
+
+        def _key(m):
+            # 同一个 block 会被不同类的 episode 复用（539 集里有 60 个重复），
+            # 只用 block 名会让跨类占比互相覆盖，必须带上 class。
+            return '%s|%d' % (m['query'], m['class'])
+
+        gtr = json.load(open(gt_cache)) if os.path.exists(gt_cache) else {}
+        missing = [m for m in eps_all if _key(m) not in gtr]
+        if missing:
+            import numpy as np
+            from ring4_isolated import DATA as BLK
+            for m in missing:
+                lab = np.asarray(np.load(
+                    os.path.join(BLK, m['query'] + '.npy'),
+                    mmap_mode='r')[:, 6]).astype(int)
+                gtr[_key(m)] = float((lab == m['class']).mean())
+            json.dump(gtr, open(gt_cache, 'w'))
+        keep = [i for i, m in enumerate(eps_all) if gtr[_key(m)] >= args.min_gt]
+    else:
+        keep = list(range(len(eps_all)))
+    todo = keep[args.shard::args.shards]
+    print('episodes %d / %d  (per_class=%d  min_gt=%.2f  shard=%d/%d)' % (
+        len(todo), len(eps_all), args.per_class, args.min_gt,
+        args.shard, args.shards), flush=True)
 
     model, cfg = load_model()
     dev = torch.device('cuda:0')
@@ -65,8 +94,8 @@ def main():
     cm = {k: {c: [0, 0, 0] for c in NEW_IDS} for k in cases}   # 每类的 TP/FP/FN
     n_bsp = {k: [] for k in cases}                             # 每集进了多少前景点
 
-    for ei, m in enumerate(eps):
-        g_ep = args.shard + args.shards * ei
+    for ei, g_ep in enumerate(todo):
+        m = eps_all[g_ep]
         seed_everything(10000 + g_ep)
 
         c = m['class']
@@ -95,32 +124,35 @@ def main():
             u_feats.append(uf)
 
         # ---- 三种 U 口径的原型 ----
-        sparse_u = {}
-        for mode, case in CASES_U:
-            sparse_u[case], nfg = build_u_sparse(
+        # 注意 n_bsp 的 key 是「带 λ 的 case 名」，所以每个 U 口径的前景点数
+        # 要记到它展开后的每一行上，不能直接写 n_bsp['Naive-B']。
+        sparse_u, nfg_of = {}, {}
+        for mode, base in CASES_U:
+            sparse_u[base], nfg_of[base] = build_u_sparse(
                 model, u_feats, mode, args.fg_hi, args.bg_lo)
-            n_bsp[case].append(nfg)
 
-        def run(case, sparse_list, lam):
+        def run(case, sparse_list, lam, nfg=0):
             """跑一行并记录逐集 IoU 与逐类 TP/FP/FN。"""
             pred, _ = predict_agg(model, qf, sparse_list, lam, dev)
             tp, fp, fn, iou = iou_counts(pred, q_map)
             ious[case].append(iou)
+            n_bsp[case].append(nfg)
             cm[case][c][0] += tp
             cm[case][c][1] += fp
             cm[case][c][2] += fn
-            rows.append(dict(ep=ei, case=case, lam=lam, cls=c,
+            rows.append(dict(ep=g_ep, case=case, lam=lam, cls=c,
                              iou=iou, tp=tp, fp=fp, fn=fn))
 
         run('Baseline', [sparse_s], 0.0)
         for lam in lams:
             for _, b in CASES_U:
-                run('%s_l%.1f' % (b, lam), [sparse_s, sparse_u[b]], lam)
+                run('%s_l%.1f' % (b, lam), [sparse_s, sparse_u[b]], lam,
+                    nfg_of[b])
 
         # 每 10 个 episode 落一次盘，进程被杀也不至于全丢
         if (ei + 1) % 10 == 0:
-            print('  %d / %d' % (ei + 1, len(eps)), flush=True)
-            json.dump(dict(rows=rows, lams=lams, done=ei + 1, n_ep=len(eps)),
+            print('  %d / %d' % (ei + 1, len(todo)), flush=True)
+            json.dump(dict(rows=rows, lams=lams, done=ei + 1, n_ep=len(todo)),
                       open(args.out + '.partial', 'w'))
 
     # ---- 汇总 ----

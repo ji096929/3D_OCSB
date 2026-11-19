@@ -1,5 +1,12 @@
 # 3D OCSB实验复盘总结
 
+> **状态（2026-11-19）：本 idea 已结案，两轮验证均为负结果。**
+> - 路线 1（COSeg + 外部无标签池 U）：`docs/ocsb_legacy/FINAL_VERDICT.md`
+> - 路线 2（GFS-VL / ScanNet200 伪标签改造）：**[`GFS_VL_CONCLUSION.md`](GFS_VL_CONCLUSION.md)**
+>
+> 一句话：桥梁池（AUC 0.496）与基类负对照（0.754 < 纯原型 0.795）在 1-shot 3D 上都没有可用信号；
+> 瓶颈在新类分类器本身，不在伪标签。
+
 > 对话 URL: https://chatgpt.com/c/6aec4db7-abd8-83e8-a04a-aa9b8739b3c4
 > 导出时间: 2026-11-12 22:05:30
 
